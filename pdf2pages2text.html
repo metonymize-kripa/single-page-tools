@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Convert and Preview PDF using PDF.js</title>
+    <!-- Bootstrap CSS for styling -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- PDF.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.5.207/pdf.min.js"></script>
+    <style>
+        #pdf-text p {
+            margin: 10px 0;
+            line-height: 1.6;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h1 class="mb-4">PDF to Text using PDF.js</h1>
+    <div class="custom-file mb-3">
+        <input type="file" class="custom-file-input" id="file-upload" accept="application/pdf">
+        <label class="custom-file-label" for="file-upload">Choose PDF file</label>
+    </div>
+    <!-- Slider for page navigation with dynamic min, max, and value attributes -->
+    <input type="range" class="custom-range" id="page-slider" min="1" max="1" value="1" style="margin-bottom: 20px;">
+    <div id="current-page" class="text-center mb-3"></div>
+    <button class="btn btn-primary mb-3" id="download-text">Download Page Text</button>
+    <button class="btn btn-primary mb-3" id="download-all-text">Download All Text</button>
+    <div id="pdf-text" class="mt-3"></div>
+</div>
+
+<!-- jQuery and Bootstrap for interaction and styling -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+$(document).ready(function () {
+    let allText = ''; // Variable to hold all text from the PDF
+    let pdfDoc = null; // Declare pdfDoc at a higher scope
+
+    $('.custom-file-input').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        $(this).next('.custom-file-label').addClass("selected").html(fileName);
+    });
+
+    document.getElementById('file-upload').addEventListener('change', function(event) {
+        var file = event.target.files[0];
+        if (file.type !== 'application/pdf') {
+            console.error(file.name + ' is not a PDF file.');
+            return;
+        }
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.5.207/pdf.worker.min.js';
+
+        var fileReader = new FileReader();
+        fileReader.onload = async function() {
+            var typedarray = new Uint8Array(this.result);
+            pdfDoc = await pdfjsLib.getDocument({data: typedarray}).promise; // Assign to pdfDoc in higher scope
+            document.getElementById('page-slider').max = pdfDoc.numPages; // Set the max value of slider to total pages
+
+            // Process and display the first page initially
+            displayPageText(1);
+
+            // Reset all text and accumulate again for downloading
+            allText = ''; 
+            for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                const page = await pdfDoc.getPage(pageNum);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                allText += pageText + '\n\n';
+            }
+        };
+        fileReader.readAsArrayBuffer(file);
+    });
+
+    async function displayPageText(pageNum) {
+        const page = await pdfDoc.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(' ');
+        document.getElementById('pdf-text').innerHTML = `<p>${pageText.replace(/\n/g, '<br>')}</p>`;
+        document.getElementById('current-page').textContent = 'Page: ' + pageNum + '/' + pdfDoc.numPages;
+    }
+
+    // Update displayed text when the slider value changes
+    document.getElementById('page-slider').oninput = function() {
+        displayPageText(parseInt(this.value, 10));
+    };
+
+    // Download the text of the current page
+    $('#download-text').click(function() {
+        var text = $('#pdf-text').text();
+        downloadText(text, "pdf_page_text.txt");
+    });
+
+    // Download all the text from the PDF
+    $('#download-all-text').click(function() {
+        downloadText(allText, "pdf_all_text.txt");
+    });
+
+    function downloadText(text, filename) {
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
+    }
+});
+</script>
+</body>
+</html>
