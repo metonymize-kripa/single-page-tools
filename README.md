@@ -1,5 +1,10 @@
 # single-page-tools
-Single page html apps to accomplish text related tasks, leveraging open source tooling
+Single page html apps to accomplish text related tasks, leveraging open source tooling. 
+
+
+## Concept
+- We should be able to save an html file to disk and treat it like an executable.
+- Using modern browser as OS and locally running LLM as AI.
 
 ## Minimal PDF2Text
 - Uses Pdf.js
